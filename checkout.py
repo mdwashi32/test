@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from decimal import Decimal, ROUND_HALF_UP
-from typing import Iterable
+from typing import Iterable, Optional
 
 CENT = Decimal("0.01")
 FREE_SHIPPING_THRESHOLD = Decimal("75.00")
@@ -50,7 +50,7 @@ def shipping_fee(pre_discount_subtotal: Decimal) -> Decimal:
     return Decimal("0.00") if pre_discount_subtotal >= FREE_SHIPPING_THRESHOLD else FLAT_SHIPPING
 
 
-def calculate_quote(items: Iterable[Item], coupon: str | None = None) -> Quote:
+def calculate_quote(items: Iterable[Item], coupon: Optional[str] = None) -> Quote:
     merchandise = cart_subtotal(items)
     discount = Decimal("0.00")
 
@@ -59,10 +59,13 @@ def calculate_quote(items: Iterable[Item], coupon: str | None = None) -> Quote:
             raise ValueError("Unknown coupon code")
         if merchandise < MIN_COUPON_SUBTOTAL:
             raise ValueError("SAVE20 requires at least $50 of merchandise")
-        discount = money(merchandise * SAVE20_DISCOUNT_RATE)
+        discount = min(
+            money(merchandise * SAVE20_DISCOUNT_RATE),
+            SAVE20_MAX_DISCOUNT
+        )
 
     discounted_merchandise = money(merchandise - discount)
-    shipping = shipping_fee(discounted_merchandise)
+    shipping = shipping_fee(merchandise)
     return Quote(
         subtotal=merchandise,
         discount=discount,
